@@ -4,6 +4,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :users
       post '/auth/login', to: 'authentication#login'
+      get '/logout/:id', to: 'users#logout'
     end
   end
 end

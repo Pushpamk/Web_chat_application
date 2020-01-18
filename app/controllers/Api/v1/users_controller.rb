@@ -1,10 +1,21 @@
 class Api::V1::UsersController < ApplicationController
   # before_action :authorize_request, except: :create
   before_action :find_user, except: :create
+  before_action :check_blacklisted_jwt, except: :create # only: [:update, :show]
 
   # GET /users/:id
   def show
     json_response_raw @user, :ok
+  end
+
+  # logout GET /users/:id
+  def logout
+    blacklistjwt = BlacklistJwt.new(token: @token)
+    if blacklistjwt.save
+      json_response 'Logout successfully', true, {}, :ok
+    else
+      json_err_response 'Something Went Wrong', :internal_server_error
+    end
   end
 
   # POST /users/
@@ -30,10 +41,13 @@ class Api::V1::UsersController < ApplicationController
 
   # DELETE /users/:id
   def destroy
-    if @user.destroy
-      json_response_raw 'Successful', :ok
-    else
-      json_err_response 'Something Went Wrong', :unprocessable_entity
+    blacklistjwt = BlacklistJwt.new(token: @token)
+    if blacklistjwt.save
+      if @user.destroy
+        json_response_raw 'Successful', :ok
+      else
+        json_err_response 'Something Went Wrong', :unprocessable_entity
+      end
     end
   end
 
@@ -42,7 +56,9 @@ class Api::V1::UsersController < ApplicationController
 
   def find_user
     token = request.headers['Authorization']
-    token = token.split(' ').last if token
+    # Passing token to destroy method to blacklist this token until it gets expired
+    @token = token.split(' ').last
+    token = @token if token
     begin
       @decoded = JsonWebToken.decode(token)
       @decoded_user = User.find(@decoded[:user_id])
@@ -63,5 +79,13 @@ class Api::V1::UsersController < ApplicationController
     params.permit(
         :email, :password, :password_confirmation
     )
+  end
+
+  def check_blacklisted_jwt
+    token = request.headers['Authorization']
+    token = token.split(' ').last
+    if BlacklistJwt.find_by_token(token)
+      json_err_response 'Invalid Token', :unprocessable_entity
+    end
   end
 end
