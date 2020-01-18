@@ -11,7 +11,8 @@ class Api::V1::UsersController < ApplicationController
   def create
     @user = User.new(user_params)
     if @user.save
-      # change @user
+      # send mail to user
+      UserNotifierMailer.send_signup_email(@user).deliver
       json_response 'User successfully signed up', true, @user, :ok
     else
       json_err_response 'Something Went Wrong', :unprocessable_entity
@@ -45,8 +46,8 @@ class Api::V1::UsersController < ApplicationController
     begin
       @decoded = JsonWebToken.decode(token)
       @decoded_user = User.find(@decoded[:user_id])
-      if @decoded_user.id == params[:id]        # check decoded user id is same as in url users/id
-        @user = @user_test
+      if @decoded_user.id == params[:id] # check decoded user id is same as in url users/id
+        @user = @decoded_user
       else
         json_response 'Unauthorized', false, {}, :unauthorized
       end
@@ -58,8 +59,9 @@ class Api::V1::UsersController < ApplicationController
   end
 
   def user_params
+    # add require
     params.permit(
         :email, :password, :password_confirmation
-      )
+    )
   end
 end
