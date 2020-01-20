@@ -1,6 +1,6 @@
 class User < ApplicationRecord
   has_secure_password
-
+  has_secure_token :auth_token
   # email and password validation
   validates :email, presence: true, uniqueness: true
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }

@@ -1,7 +1,8 @@
 class Api::V1::UsersController < ApplicationController
   # before_action :authorize_request, except: :create
-  before_action :find_user, except: :create
-  before_action :check_blacklisted_jwt, except: :create # only: [:update, :show]
+  before_action :find_user, except: [:create, :email_confirmation]
+  before_action :check_blacklisted_jwt, except: [:create , :email_confirmation]# only: [:update, :show]
+  before_action :auth_token_params, only: :email_confirmation
 
   # GET /users/:id
   def show
@@ -23,7 +24,7 @@ class Api::V1::UsersController < ApplicationController
     @user = User.new(user_params)
     if @user.save
       # send mail to user
-      UserNotifierMailer.send_signup_email(@user).deliver
+      # UserNotifierMailer.send_signup_email(@user).deliver
       json_response 'User successfully signed up', true, @user, :ok
     else
       json_err_response 'Something Went Wrong', :unprocessable_entity
@@ -47,6 +48,38 @@ class Api::V1::UsersController < ApplicationController
         json_response_raw 'Successful', :ok
       else
         json_err_response 'Something Went Wrong', :unprocessable_entity
+      end
+    end
+  end
+
+  # Email Confirmation
+  #def email_confirmation
+  #  @user = User.find_by_auth_token(auth_token_params)
+  #  if @user
+  #    @user.confirmed  = true
+  #    if @user.save
+  #      json_response 'Successful Confirmation', true,{}, :ok
+  #      redirect_to '/api/v1/auth/login'
+  #    else
+  #      json_err_response 'Something Went Wrong', :internal_server_error
+  #    end
+  #  else
+  #    json_err_response 'Invalid Link', :unprocessable_entity
+  #  end
+  #end
+  def email_confirmation
+    @user = User.find_by_auth_token(params[:auth_token])
+    if @user.confirmed == true
+      json_err_response 'Invalid Link', :unprocessable_entity
+    else
+      if @user
+        if @user.update_column(:confirmed, true)
+          json_response 'Successfully Confirmed', true, {}, :ok
+        else
+          json_err_response 'Something Went Wrong', :internal_server_error
+        end
+      else
+        json_err_response 'Invalid Link', :unprocessable_entity
       end
     end
   end
@@ -77,7 +110,7 @@ class Api::V1::UsersController < ApplicationController
   def user_params
     # add require
     params.permit(
-        :email, :password, :password_confirmation
+        :email, :password#, :confirmation_password
     )
   end
 
@@ -87,5 +120,11 @@ class Api::V1::UsersController < ApplicationController
     if BlacklistJwt.find_by_token(token)
       json_err_response 'Invalid Token', :unprocessable_entity
     end
+  end
+
+  def auth_token_params
+    params.permit(
+        :auth_token
+    )
   end
 end
