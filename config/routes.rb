@@ -8,4 +8,7 @@ Rails.application.routes.draw do
       get '/confirmed/:auth_token', to: 'users#email_confirmation'
     end
   end
+  mount ActionCable.server => '/cable'
+  resources :conversations, only: [:index, :create]
+  resources :messages, only: [:create]
 end
