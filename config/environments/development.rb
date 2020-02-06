@@ -51,4 +51,6 @@ Rails.application.configure do
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
   config.action_mailer.delivery_method = :smtp
   config.action_mailer.default_url_options = { host: "https://zoli.com" }
+  config.action_cable.url = "ws:localhost:3000/cable"
+  config.action_cable.disable_request_forgery_protection = true
 end
